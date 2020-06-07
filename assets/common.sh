@@ -7,6 +7,34 @@ elif [ -n "$namespace_overwrite" ]; then
   namespace=$namespace
 fi
 
+generate_awscli_kubeconfig() {
+  payload=$1
+  source=$2
+  # Optional. Use the AWS EKS authenticator
+  assume_aws_role=$(jq -r '.source.assume_aws_role // ""' < $payload)
+  aws_region=$(jq -r '.source.aws_region // ""' < $payload)
+  aws_access_key_id=$(jq -r '.source.aws_access_key_id // ""' < $payload)
+  aws_secret_access_key=$(jq -r '.source.aws_secret_access_key // ""' < $payload)
+  if [ ! -z "$assume_aws_role" ]; then
+    if [ -z "$aws_region" ]; then
+      echo 'No aws region specified in the source configuration with parameter aws_region. Defaulting to eu-west-1.'
+      aws_region="us-west-2"
+    fi
+    if [ ! -z "$aws_access_key_id" ]; then
+      export AWS_ACCESS_KEY_ID=$aws_access_key_id
+    fi
+    if [ ! -z "$aws_secret_access_key" ]; then
+      export AWS_SECRET_ACCESS_KEY=$aws_secret_access_key
+    fi
+    echo "Assuming aws role with arn $assume_aws_role"
+    export temp_credentials=$(aws sts assume-role --role-arn $assume_aws_role --role-session-name concourse-helm-resource-session)
+    export AWS_ACCESS_KEY_ID=$(echo ${temp_credentials} | jq -r '.Credentials.AccessKeyId') AWS_SESSION_TOKEN=$(echo ${temp_credentials} | jq -r '.Credentials.SessionToken') AWS_SECRET_ACCESS_KEY=$(echo ${temp_credentials} | jq -r ' .Credentials.SecretAccessKey') AWS_DEFAULT_REGION=$aws_region
+  fi
+  local aws_eks_cluster_name
+  aws_eks_cluster_name="$(jq -r '.source.aws_eks_cluster_name // ""' < "$payload")"
+  aws eks update-kubeconfig --name $aws_eks_cluster_name
+}
+
 setup_kubernetes() {
   payload=$1
   source=$2
@@ -14,8 +42,14 @@ setup_kubernetes() {
   mkdir -p /root/.kube
   kubeconfig_path=$(jq -r '.params.kubeconfig_path // ""' < $payload)
   absolute_kubeconfig_path="${source}/${kubeconfig_path}"
+
+  use_awscli_eks_auth=$(jq -r '.source.use_awscli_eks_auth // "false"' < $payload)
+
   if [ -f "$absolute_kubeconfig_path" ]; then
     cp "$absolute_kubeconfig_path" "/root/.kube/config"
+  elif [ "$use_awscli_eks_auth" == true ]; then
+    echo "using aws cli to generate kubeconfig"
+    generate_awscli_kubeconfig $1 $2
   else
     # Setup kubectl
     cluster_url=$(jq -r '.source.cluster_url // ""' < $payload)
