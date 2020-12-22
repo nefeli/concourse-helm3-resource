@@ -136,6 +136,7 @@ wait_for_service_up() {
 setup_repos() {
   repos=$(jq -c '(try .source.repos[] catch [][])' < $1)
   plugins=$(jq -c '(try .source.plugins[] catch [][])' < $1)
+  stable_repo=$(jq -r '.source.stable_repo // "https://kubernetes-charts.storage.googleapis.com"' < $1)
 
   local IFS=$'\n'
 
@@ -175,7 +176,7 @@ setup_repos() {
     $helm_bin repo update
   fi
 
-  $helm_bin repo add stable https://kubernetes-charts.storage.googleapis.com
+  $helm_bin repo add stable $stable_repo
   $helm_bin repo update
 }
 

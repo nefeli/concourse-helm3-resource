@@ -1,10 +1,13 @@
-PROJECT = concourse-helm3
-ID = YOUR_DOCKER_HOST_HERE/${PROJECT}
+PROJECT = concourse-helm-eks-resource
+ID = nefelinetworks/${PROJECT}
 
-all: build push
+all: init build push
+
+init:
+	docker login
 
 build:
-	docker build --tag ${ID}:release-candidate .
+	docker build --tag ${ID}:latest .
 
 push:
 	docker push ${ID}

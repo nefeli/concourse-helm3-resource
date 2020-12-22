@@ -2,11 +2,11 @@
 
 Deploy [Helm Charts](https://github.com/helm/helm) from [Concourse](https://concourse-ci.org/).
 
-Heavily based on the work of https://github.com/linkyard/concourse-helm-resource
+Heavily based on the work of https://github.com/rvichery/concourse-helm3-resource
 
 ## Docker Image
 
-https://hub.docker.com/repository/docker/typositoire/concourse-helm3-resource
+https://hub.docker.com/repository/docker/nefelinetworks/concourse-helm-resource
 
 ## Usage
 
@@ -115,4 +115,13 @@ jobs:
       - key: image.tag
         path: version/image_tag # Read value from version/number
         type: string            # Make sure it's interpreted as a string by Helm (not a number)
+```
+
+## DockerHub
+
+DockerHub repository: nefelinetworks/concourse-helm-eks-resource
+
+Login, build and push in DockerHub:
+```
+make
 ```
